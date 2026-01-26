@@ -1,0 +1,64 @@
+# Jira Ticket Manager Configuration
+# Copy this file to config-local.yml and update with your Jira credentials
+
+# Jira Server connection settings
+jira:
+  baseUrl: ${JIRA_BASE_URL:-http://localhost:8080}  # Your Jira Server URL
+  username: ${JIRA_USERNAME:-admin}                  # Jira username
+  apiToken: ${JIRA_API_TOKEN:-your-password-or-token} # Password or API token (default/fallback)
+
+  # Override for API token - takes precedence over apiToken if set
+  # Use this to inject credentials via environment variable without modifying the config file
+  apiTokenOverride: ${JIRA_API_TOKEN_OVERRIDE:-}
+
+  # Connection timeouts (in milliseconds)
+  connectionTimeout: ${JIRA_CONNECTION_TIMEOUT:-5000}
+  readTimeout: ${JIRA_READ_TIMEOUT:-30000}
+  socketTimeout: ${JIRA_SOCKET_TIMEOUT:-30000}
+
+  # Connection pool settings
+  maxConnections: ${JIRA_MAX_CONNECTIONS:-20}
+
+# Background tasks configuration
+tasks:
+  # Thread pool sizes
+  schedulerPoolSize: 4    # Threads for scheduled task execution
+  onDemandPoolSize: 2     # Threads for on-demand task execution
+
+  # Issue Sync Task - syncs issues from Jira based on JQL
+  issueSync:
+    enabled: true
+    intervalMinutes: 30           # Run every 30 minutes
+    initialDelayMinutes: 1        # Start 1 minute after application startup
+    jqlFilter: "project IS NOT EMPTY AND updated >= -1d"
+    batchSize: 100
+
+  # Stale Issue Cleanup Task - transitions old issues to closed
+  staleIssueCleanup:
+    enabled: false                # Disabled by default for safety
+    intervalMinutes: 1440         # Run once a day (24 * 60 = 1440)
+    initialDelayMinutes: 60       # Start 1 hour after application startup
+    staleDays: 30                 # Issues not updated in 30 days
+    targetStatus: "Closed"        # Transition to this status
+    dryRun: true                  # Set to false to actually transition issues
+
+# Dropwizard server configuration
+server:
+  applicationConnectors:
+    - type: http
+      port: 8081
+  adminConnectors:
+    - type: http
+      port: 8082
+
+# Logging configuration
+logging:
+  level: INFO
+  loggers:
+    org.limits: DEBUG
+    org.limits.task: INFO
+    com.atlassian.jira: INFO
+  appenders:
+    - type: console
+      threshold: ALL
+      target: stdout
