@@ -66,6 +66,13 @@
             <version>${jira.rest.client.version}</version>
         </dependency>
 
+        <!-- Typesafe Config for HOCON support -->
+        <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <version>1.4.3</version>
+        </dependency>
+
         <dependency>
             <groupId>io.atlassian.fugue</groupId>
             <artifactId>fugue</artifactId>

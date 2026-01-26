@@ -166,7 +166,14 @@ public class JiraConfiguration extends Configuration {
 
         @NotEmpty
         @JsonProperty
-        private String  baseUrl;
+        private String baseUrl;
+
+        /**
+         * Primary project key that tasks operate on by default.
+         */
+        @NotEmpty
+        @JsonProperty
+        private String baseProject;
 
         @NotEmpty
         @JsonProperty
@@ -201,6 +208,14 @@ public class JiraConfiguration extends Configuration {
 
         public void setBaseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+        }
+
+        public String getBaseProject() {
+            return baseProject;
+        }
+
+        public void setBaseProject(String baseProject) {
+            this.baseProject = baseProject;
         }
 
         public String getUsername() {

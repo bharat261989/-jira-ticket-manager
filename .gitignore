@@ -41,3 +41,5 @@ build/
 ### Application ###
 config-local.yml
 dependency-reduced-pom.xml
+user.conf
+src/main/resources/user.conf

@@ -8,7 +8,9 @@ import io.dropwizard.core.setup.Environment;
 import org.limits.api.TaskResource;
 import org.limits.api.TicketResource;
 import org.limits.client.JiraClient;
+import org.limits.config.HoconConfigLoader;
 import org.limits.config.JiraConfiguration;
+import org.limits.config.JiraConfiguration.JiraConfig;
 import org.limits.config.JiraConfiguration.TasksConfig;
 import org.limits.health.JiraHealthCheck;
 import org.limits.task.TaskScheduler;
@@ -44,20 +46,26 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
     @Override
     public void run(JiraConfiguration configuration, Environment environment) {
         LOG.info("Starting Jira Ticket Manager Application");
-        LOG.info("Connecting to Jira at: {}", configuration.getJira().getBaseUrl());
+
+        // Load application config from HOCON (config.conf + user.conf)
+        HoconConfigLoader hoconLoader = new HoconConfigLoader();
+        JiraConfig jiraConfig = hoconLoader.loadJiraConfig();
+        TasksConfig tasksConfig = hoconLoader.loadTasksConfig();
+
+        LOG.info("Connecting to Jira at: {} (project: {})",
+                jiraConfig.getBaseUrl(), jiraConfig.getBaseProject());
 
         // Create Jira client
-        final JiraClient jiraClient = new JiraClient(configuration.getJira());
+        final JiraClient jiraClient = new JiraClient(jiraConfig);
 
         // Create task scheduler
-        TasksConfig tasksConfig = configuration.getTasks();
         final TaskScheduler taskScheduler = new TaskScheduler(
                 tasksConfig.getSchedulerPoolSize(),
                 tasksConfig.getOnDemandPoolSize()
         );
 
         // Register background tasks
-        registerTasks(taskScheduler, tasksConfig, jiraClient);
+        registerTasks(taskScheduler, tasksConfig, jiraClient, jiraConfig);
 
         // Register health check
         environment.healthChecks().register("jira", new JiraHealthCheck(jiraClient));
@@ -84,14 +92,16 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         LOG.info("Jira Ticket Manager Application initialized successfully");
     }
 
-    private void registerTasks(TaskScheduler scheduler, TasksConfig config, JiraClient jiraClient) {
+    private void registerTasks(TaskScheduler scheduler, TasksConfig tasksConfig,
+                               JiraClient jiraClient, JiraConfig jiraConfig) {
         // Register Issue Sync Task
-        scheduler.registerTask(new IssueSyncTask(config.getIssueSync(), jiraClient));
+        scheduler.registerTask(new IssueSyncTask(tasksConfig.getIssueSync(), jiraClient));
 
         // Register Stale Issue Cleanup Task
-        scheduler.registerTask(new StaleIssueCleanupTask(config.getStaleIssueCleanup(), jiraClient));
+        scheduler.registerTask(new StaleIssueCleanupTask(tasksConfig.getStaleIssueCleanup(), jiraClient));
 
         // Add more tasks here as needed
-        LOG.info("Registered {} background tasks", scheduler.getAllTasks().size());
+        LOG.info("Registered {} background tasks for project: {}",
+                scheduler.getAllTasks().size(), jiraConfig.getBaseProject());
     }
 }
