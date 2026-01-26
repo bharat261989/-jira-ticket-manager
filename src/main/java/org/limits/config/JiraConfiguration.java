@@ -2,19 +2,13 @@ package org.limits.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import org.limits.task.TaskConfig;
 
 public class JiraConfiguration extends Configuration {
 
-    @Valid
-    @NotNull
     @JsonProperty("jira")
     private JiraConfig jira = new JiraConfig();
 
-    @Valid
     @JsonProperty("tasks")
     private TasksConfig tasks = new TasksConfig();
 
@@ -45,11 +39,9 @@ public class JiraConfiguration extends Configuration {
         @JsonProperty
         private int onDemandPoolSize = 2;
 
-        @Valid
         @JsonProperty
         private IssueSyncTaskConfig issueSync = new IssueSyncTaskConfig();
 
-        @Valid
         @JsonProperty
         private StaleIssueCleanupTaskConfig staleIssueCleanup = new StaleIssueCleanupTaskConfig();
 
@@ -164,22 +156,18 @@ public class JiraConfiguration extends Configuration {
 
     public static class JiraConfig {
 
-        @NotEmpty
         @JsonProperty
         private String baseUrl;
 
         /**
          * Primary project key that tasks operate on by default.
          */
-        @NotEmpty
         @JsonProperty
         private String baseProject;
 
-        @NotEmpty
         @JsonProperty
         private String username;
 
-        @NotEmpty
         @JsonProperty
         private String apiToken;
 
