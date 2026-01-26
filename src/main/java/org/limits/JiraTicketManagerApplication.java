@@ -7,7 +7,6 @@ import org.limits.api.TaskResource;
 import org.limits.api.TicketResource;
 import org.limits.client.JiraClient;
 import org.limits.config.HoconConfigLoader;
-import org.limits.config.HoconConfigurationFactoryFactory;
 import org.limits.config.JiraConfiguration;
 import org.limits.config.JiraConfiguration.JiraConfig;
 import org.limits.config.JiraConfiguration.TasksConfig;
@@ -34,8 +33,8 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
 
     @Override
     public void initialize(Bootstrap<JiraConfiguration> bootstrap) {
-        // Use HOCON configuration factory
-        bootstrap.setConfigurationFactoryFactory(new HoconConfigurationFactoryFactory<>());
+        // Using default YAML config for Dropwizard bootstrap
+        // Application config is loaded via HoconConfigLoader
     }
 
     @Override
@@ -105,11 +104,6 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
 
     /**
      * Run startup validation if enabled via config or environment variable.
-     *
-     * Enable validation by:
-     * - Setting validateOnStartup=true in config
-     * - Setting VALIDATE_ON_STARTUP=true environment variable
-     * - Passing -DVALIDATE_ON_STARTUP=true system property
      */
     private void runStartupValidation(JiraClient jiraClient, JiraConfig jiraConfig) {
         boolean shouldValidate = jiraConfig.isValidateOnStartup() || StartupValidator.shouldValidate();
@@ -125,7 +119,7 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
             StartupValidator validator = new StartupValidator(
                     jiraClient,
                     jiraConfig,
-                    true,  // validate sample issue
+                    true,
                     jiraConfig.getSampleIssueNumber()
             );
             validator.validate();

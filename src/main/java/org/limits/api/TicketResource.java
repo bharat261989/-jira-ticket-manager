@@ -2,11 +2,9 @@ package org.limits.api;
 
 import com.atlassian.jira.rest.client.api.domain.BasicIssue;
 import com.atlassian.jira.rest.client.api.domain.Issue;
-import com.atlassian.jira.rest.client.api.domain.IssueFieldId;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.api.domain.Transition;
 import com.atlassian.jira.rest.client.api.domain.input.ComplexIssueInputFieldValue;
-import com.atlassian.jira.rest.client.api.domain.input.IssueInput;
 import com.atlassian.jira.rest.client.api.domain.input.IssueInputBuilder;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -87,7 +85,7 @@ public class TicketResource {
             IssueInputBuilder builder = new IssueInputBuilder()
                     .setProjectKey(request.getProjectKey())
                     .setSummary(request.getSummary())
-                    .setFieldValue(IssueFieldId.ISSUE_TYPE_FIELD,
+                    .setFieldValue("issuetype",
                             ComplexIssueInputFieldValue.with("name", request.getIssueType()));
 
             if (request.getDescription() != null) {
