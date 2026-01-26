@@ -15,9 +15,10 @@ import java.io.File;
  * Loads application configuration from HOCON files.
  *
  * Load order (later overrides earlier):
- * 1. config.conf (from classpath/resources)
- * 2. user.conf (from classpath/resources) - for local overrides
- * 3. Environment variables
+ * 1. application.conf (from classpath)
+ * 2. user.conf (from classpath) - for local overrides
+ * 3. System properties (-Dkey=value)
+ * 4. Environment variables
  */
 public class HoconConfigLoader {
 
@@ -26,15 +27,33 @@ public class HoconConfigLoader {
     private final Config config;
 
     public HoconConfigLoader() {
-        // Load config with fallbacks: user.conf -> config.conf -> reference.conf
-        this.config = ConfigFactory.load();
-        LOG.info("Loaded HOCON configuration");
+        // Load order: user.conf overrides application.conf
+        Config appConfig = ConfigFactory.parseResources("application.conf");
+        Config userConfig = ConfigFactory.parseResources("user.conf");
+
+        // user.conf -> application.conf -> system properties -> env vars
+        this.config = ConfigFactory.systemEnvironment()
+                .withFallback(ConfigFactory.systemProperties())
+                .withFallback(userConfig)
+                .withFallback(appConfig)
+                .resolve();
+
+        LOG.info("Loaded HOCON configuration (application.conf + user.conf)");
     }
 
     public HoconConfigLoader(String configFile) {
-        // Load from specific file with fallbacks
+        // Load from specific file with standard fallbacks
         Config fileConfig = ConfigFactory.parseFile(new File(configFile));
-        this.config = fileConfig.withFallback(ConfigFactory.load()).resolve();
+        Config appConfig = ConfigFactory.parseResources("application.conf");
+        Config userConfig = ConfigFactory.parseResources("user.conf");
+
+        this.config = ConfigFactory.systemEnvironment()
+                .withFallback(ConfigFactory.systemProperties())
+                .withFallback(fileConfig)
+                .withFallback(userConfig)
+                .withFallback(appConfig)
+                .resolve();
+
         LOG.info("Loaded HOCON configuration from: {}", configFile);
     }
 
@@ -69,7 +88,7 @@ public class HoconConfigLoader {
             jiraConfig.setSampleIssueNumber(jiraConf.getInt("sampleIssueNumber"));
         }
 
-        LOG.info("Loaded Jira config: baseUrl={}, baseProject={}, username={}, validateOnStartup={}",
+        LOG.info("Jira config: baseUrl={}, baseProject={}, username={}, validateOnStartup={}",
                 jiraConfig.getBaseUrl(), jiraConfig.getBaseProject(),
                 jiraConfig.getUsername(), jiraConfig.isValidateOnStartup());
 

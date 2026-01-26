@@ -1,7 +1,5 @@
 package org.limits;
 
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
-import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
@@ -9,6 +7,7 @@ import org.limits.api.TaskResource;
 import org.limits.api.TicketResource;
 import org.limits.client.JiraClient;
 import org.limits.config.HoconConfigLoader;
+import org.limits.config.HoconConfigurationFactoryFactory;
 import org.limits.config.JiraConfiguration;
 import org.limits.config.JiraConfiguration.JiraConfig;
 import org.limits.config.JiraConfiguration.TasksConfig;
@@ -35,20 +34,15 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
 
     @Override
     public void initialize(Bootstrap<JiraConfiguration> bootstrap) {
-        // Enable environment variable substitution in configuration
-        bootstrap.setConfigurationSourceProvider(
-                new SubstitutingSourceProvider(
-                        bootstrap.getConfigurationSourceProvider(),
-                        new EnvironmentVariableSubstitutor(false)
-                )
-        );
+        // Use HOCON configuration factory
+        bootstrap.setConfigurationFactoryFactory(new HoconConfigurationFactoryFactory<>());
     }
 
     @Override
     public void run(JiraConfiguration configuration, Environment environment) {
         LOG.info("Starting Jira Ticket Manager Application");
 
-        // Load application config from HOCON (config.conf + user.conf)
+        // Load application config from HOCON (application.conf + user.conf)
         HoconConfigLoader hoconLoader = new HoconConfigLoader();
         JiraConfig jiraConfig = hoconLoader.loadJiraConfig();
         TasksConfig tasksConfig = hoconLoader.loadTasksConfig();

@@ -1,17 +1,28 @@
-# Local User Configuration
+# Local User Configuration Template
 # Copy this file to user.conf and fill in your values
-# user.conf is gitignored and will not be committed
+# user.conf is gitignored and will NOT be committed
+
+# Uncomment and set your values:
 
 jira {
   # Your Jira Server URL
-  baseUrl = "https://jira.yourcompany.com"
+  # baseUrl = "https://jira.yourcompany.com"
 
   # Your primary project key
-  baseProject = "MYPROJECT"
+  # baseProject = "MYPROJECT"
 
   # Your Jira username
-  username = "your-username"
+  # username = "your-username"
 
   # Your Jira API token or password
-  apiToken = "your-api-token-here"
+  # apiToken = "your-secret-token"
+
+  # Enable startup validation
+  # validateOnStartup = true
 }
+
+# Override server ports if needed
+# server {
+#   applicationConnectors = [{ type = http, port = 9090 }]
+#   adminConnectors = [{ type = http, port = 9091 }]
+# }
