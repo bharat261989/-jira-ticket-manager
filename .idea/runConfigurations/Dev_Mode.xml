@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Dev Mode" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="org.limits.JiraTicketManagerApplication" />
+    <module name="jira-ticket-manager" />
+    <option name="PROGRAM_PARAMETERS" value="server config.yml" />
+    <option name="VM_PARAMETERS" value="-Xms256m -Xmx512m" />
+    <envs>
+      <env name="VALIDATE_ON_STARTUP" value="false" />
+      <env name="PRODUCTION_MODE" value="false" />
+    </envs>
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
