@@ -202,6 +202,19 @@ public class JiraConfiguration extends Configuration {
         @JsonProperty
         private int maxConnections = 20;
 
+        /**
+         * Whether to validate Jira connectivity on startup.
+         * Can be overridden by VALIDATE_ON_STARTUP env var.
+         */
+        @JsonProperty
+        private boolean validateOnStartup = false;
+
+        /**
+         * Sample issue number to validate (e.g., 123 for PROJECT-123)
+         */
+        @JsonProperty
+        private int sampleIssueNumber = 123;
+
         public String getBaseUrl() {
             return baseUrl;
         }
@@ -278,6 +291,22 @@ public class JiraConfiguration extends Configuration {
 
         public void setMaxConnections(int maxConnections) {
             this.maxConnections = maxConnections;
+        }
+
+        public boolean isValidateOnStartup() {
+            return validateOnStartup;
+        }
+
+        public void setValidateOnStartup(boolean validateOnStartup) {
+            this.validateOnStartup = validateOnStartup;
+        }
+
+        public int getSampleIssueNumber() {
+            return sampleIssueNumber;
+        }
+
+        public void setSampleIssueNumber(int sampleIssueNumber) {
+            this.sampleIssueNumber = sampleIssueNumber;
         }
     }
 }

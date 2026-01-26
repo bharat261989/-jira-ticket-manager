@@ -61,8 +61,17 @@ public class HoconConfigLoader {
         jiraConfig.setSocketTimeout(jiraConf.getInt("socketTimeout"));
         jiraConfig.setMaxConnections(jiraConf.getInt("maxConnections"));
 
-        LOG.info("Loaded Jira config: baseUrl={}, baseProject={}, username={}",
-                jiraConfig.getBaseUrl(), jiraConfig.getBaseProject(), jiraConfig.getUsername());
+        // Validation settings
+        if (jiraConf.hasPath("validateOnStartup")) {
+            jiraConfig.setValidateOnStartup(jiraConf.getBoolean("validateOnStartup"));
+        }
+        if (jiraConf.hasPath("sampleIssueNumber")) {
+            jiraConfig.setSampleIssueNumber(jiraConf.getInt("sampleIssueNumber"));
+        }
+
+        LOG.info("Loaded Jira config: baseUrl={}, baseProject={}, username={}, validateOnStartup={}",
+                jiraConfig.getBaseUrl(), jiraConfig.getBaseProject(),
+                jiraConfig.getUsername(), jiraConfig.isValidateOnStartup());
 
         return jiraConfig;
     }

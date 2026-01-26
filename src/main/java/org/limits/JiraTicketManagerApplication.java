@@ -12,6 +12,7 @@ import org.limits.config.HoconConfigLoader;
 import org.limits.config.JiraConfiguration;
 import org.limits.config.JiraConfiguration.JiraConfig;
 import org.limits.config.JiraConfiguration.TasksConfig;
+import org.limits.config.StartupValidator;
 import org.limits.health.JiraHealthCheck;
 import org.limits.task.TaskScheduler;
 import org.limits.task.impl.IssueSyncTask;
@@ -58,6 +59,9 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         // Create Jira client
         final JiraClient jiraClient = new JiraClient(jiraConfig);
 
+        // Run startup validation if enabled
+        runStartupValidation(jiraClient, jiraConfig);
+
         // Create task scheduler
         final TaskScheduler taskScheduler = new TaskScheduler(
                 tasksConfig.getSchedulerPoolSize(),
@@ -103,5 +107,43 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         // Add more tasks here as needed
         LOG.info("Registered {} background tasks for project: {}",
                 scheduler.getAllTasks().size(), jiraConfig.getBaseProject());
+    }
+
+    /**
+     * Run startup validation if enabled via config or environment variable.
+     *
+     * Enable validation by:
+     * - Setting validateOnStartup=true in config
+     * - Setting VALIDATE_ON_STARTUP=true environment variable
+     * - Passing -DVALIDATE_ON_STARTUP=true system property
+     */
+    private void runStartupValidation(JiraClient jiraClient, JiraConfig jiraConfig) {
+        boolean shouldValidate = jiraConfig.isValidateOnStartup() || StartupValidator.shouldValidate();
+
+        if (!shouldValidate) {
+            LOG.info("Startup validation is disabled. Enable with VALIDATE_ON_STARTUP=true");
+            return;
+        }
+
+        LOG.info("Startup validation is enabled");
+
+        try {
+            StartupValidator validator = new StartupValidator(
+                    jiraClient,
+                    jiraConfig,
+                    true,  // validate sample issue
+                    jiraConfig.getSampleIssueNumber()
+            );
+            validator.validate();
+
+        } catch (StartupValidator.StartupValidationException e) {
+            LOG.error("Startup validation failed: {}", e.getMessage());
+
+            if (StartupValidator.isProductionMode()) {
+                throw new RuntimeException("Startup validation failed in production mode", e);
+            } else {
+                LOG.warn("Continuing despite validation failure (non-production mode)");
+            }
+        }
     }
 }
