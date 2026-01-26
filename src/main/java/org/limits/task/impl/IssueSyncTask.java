@@ -5,7 +5,6 @@ import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import org.limits.client.JiraClient;
 import org.limits.config.JiraConfiguration.IssueSyncTaskConfig;
 import org.limits.task.AbstractBackgroundTask;
-import org.limits.task.TaskCategory;
 import org.limits.task.TaskResult;
 
 import java.time.Instant;
@@ -34,11 +33,6 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     @Override
     public String getTaskName() {
         return TASK_NAME;
-    }
-
-    @Override
-    public TaskCategory getCategory() {
-        return TaskCategory.SYNC;
     }
 
     @Override

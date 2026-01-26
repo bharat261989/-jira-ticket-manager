@@ -1,0 +1,235 @@
+#!/bin/bash
+# Jira Ticket Manager CLI
+# Usage: jtm <command> [args]
+
+BASE_URL="${JTM_BASE_URL:-http://localhost:8081}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+usage() {
+    echo "Jira Ticket Manager CLI"
+    echo ""
+    echo "Usage: jtm <command> [arguments]"
+    echo ""
+    echo "Ticket Commands:"
+    echo "  get <issueKey>              Get a ticket by key (e.g., jtm get PROJ-123)"
+    echo "  search <jql>                Search tickets using JQL"
+    echo "  create <project> <summary>  Create a new ticket"
+    echo "  update <issueKey> <summary> Update ticket summary"
+    echo "  delete <issueKey>           Delete a ticket"
+    echo "  transitions <issueKey>      Get available transitions"
+    echo "  transition <issueKey> <id>  Transition ticket to new status"
+    echo "  comment <issueKey> <text>   Add comment to ticket"
+    echo ""
+    echo "Task Commands:"
+    echo "  tasks                       List all background tasks"
+    echo "  task <taskId>               Get task details"
+    echo "  run <taskId>                Run a task on-demand"
+    echo "  result <taskId>             Get last execution result"
+    echo ""
+    echo "Health Commands:"
+    echo "  health                      Check application health"
+    echo "  ping                        Check if server is running"
+    echo ""
+    echo "Environment Variables:"
+    echo "  JTM_BASE_URL                API base URL (default: http://localhost:8081)"
+    echo ""
+    echo "Examples:"
+    echo "  jtm get PROJ-123"
+    echo "  jtm search 'project=PROJ AND status=Open'"
+    echo "  jtm create PROJ 'Fix login bug'"
+    echo "  jtm tasks"
+    echo "  jtm run issue-sync"
+}
+
+# Helper function to make API calls
+api_call() {
+    local method=$1
+    local endpoint=$2
+    shift 2
+    curl -s -X "$method" "${BASE_URL}${endpoint}" \
+        -H "Content-Type: application/json" \
+        "$@" | jq . 2>/dev/null || cat
+}
+
+# Ticket commands
+cmd_get() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Issue key required${NC}"
+        echo "Usage: jtm get <issueKey>"
+        exit 1
+    fi
+    api_call GET "/api/tickets/$1"
+}
+
+cmd_search() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: JQL query required${NC}"
+        echo "Usage: jtm search <jql>"
+        exit 1
+    fi
+    local jql=$(echo "$1" | sed 's/ /%20/g')
+    api_call GET "/api/tickets?jql=${jql}"
+}
+
+cmd_create() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo -e "${RED}Error: Project key and summary required${NC}"
+        echo "Usage: jtm create <projectKey> <summary> [issueType] [description]"
+        exit 1
+    fi
+    local project=$1
+    local summary=$2
+    local issueType=${3:-Task}
+    local description=${4:-""}
+
+    api_call POST "/api/tickets" \
+        -d "{\"projectKey\":\"$project\",\"summary\":\"$summary\",\"issueType\":\"$issueType\",\"description\":\"$description\"}"
+}
+
+cmd_update() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo -e "${RED}Error: Issue key and summary required${NC}"
+        echo "Usage: jtm update <issueKey> <summary> [description]"
+        exit 1
+    fi
+    local issueKey=$1
+    local summary=$2
+    local description=${3:-""}
+
+    local body="{\"summary\":\"$summary\""
+    if [ -n "$description" ]; then
+        body="$body,\"description\":\"$description\""
+    fi
+    body="$body}"
+
+    api_call PUT "/api/tickets/$issueKey" -d "$body"
+}
+
+cmd_delete() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Issue key required${NC}"
+        echo "Usage: jtm delete <issueKey>"
+        exit 1
+    fi
+    api_call DELETE "/api/tickets/$1"
+    echo -e "${GREEN}Ticket $1 deleted${NC}"
+}
+
+cmd_transitions() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Issue key required${NC}"
+        echo "Usage: jtm transitions <issueKey>"
+        exit 1
+    fi
+    api_call GET "/api/tickets/$1/transitions"
+}
+
+cmd_transition() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo -e "${RED}Error: Issue key and transition ID required${NC}"
+        echo "Usage: jtm transition <issueKey> <transitionId>"
+        exit 1
+    fi
+    api_call POST "/api/tickets/$1/transitions" \
+        -d "{\"transitionId\":$2}"
+}
+
+cmd_comment() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo -e "${RED}Error: Issue key and comment text required${NC}"
+        echo "Usage: jtm comment <issueKey> <text>"
+        exit 1
+    fi
+    api_call POST "/api/tickets/$1/comments" \
+        -d "{\"body\":\"$2\"}"
+    echo -e "${GREEN}Comment added to $1${NC}"
+}
+
+# Task commands
+cmd_tasks() {
+    api_call GET "/api/tasks"
+}
+
+cmd_task() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Task ID required${NC}"
+        echo "Usage: jtm task <taskId>"
+        exit 1
+    fi
+    api_call GET "/api/tasks/$1"
+}
+
+cmd_run() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Task ID required${NC}"
+        echo "Usage: jtm run <taskId> [--sync]"
+        exit 1
+    fi
+    local taskId=$1
+    local async="true"
+    if [ "$2" = "--sync" ]; then
+        async="false"
+    fi
+    api_call POST "/api/tasks/$taskId/run?async=$async"
+}
+
+cmd_result() {
+    if [ -z "$1" ]; then
+        echo -e "${RED}Error: Task ID required${NC}"
+        echo "Usage: jtm result <taskId>"
+        exit 1
+    fi
+    api_call GET "/api/tasks/$1/result"
+}
+
+# Health commands
+cmd_health() {
+    curl -s "${BASE_URL/8081/8082}/healthcheck" | jq . 2>/dev/null || cat
+}
+
+cmd_ping() {
+    if curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/tasks" | grep -q "200"; then
+        echo -e "${GREEN}Server is running at ${BASE_URL}${NC}"
+    else
+        echo -e "${RED}Server is not responding at ${BASE_URL}${NC}"
+        exit 1
+    fi
+}
+
+# Main command dispatcher
+case "$1" in
+    # Ticket commands
+    get)        shift; cmd_get "$@" ;;
+    search)     shift; cmd_search "$@" ;;
+    create)     shift; cmd_create "$@" ;;
+    update)     shift; cmd_update "$@" ;;
+    delete)     shift; cmd_delete "$@" ;;
+    transitions) shift; cmd_transitions "$@" ;;
+    transition) shift; cmd_transition "$@" ;;
+    comment)    shift; cmd_comment "$@" ;;
+
+    # Task commands
+    tasks)      cmd_tasks ;;
+    task)       shift; cmd_task "$@" ;;
+    run)        shift; cmd_run "$@" ;;
+    result)     shift; cmd_result "$@" ;;
+
+    # Health commands
+    health)     cmd_health ;;
+    ping)       cmd_ping ;;
+
+    # Help
+    help|--help|-h|"")
+        usage ;;
+
+    *)
+        echo -e "${RED}Unknown command: $1${NC}"
+        echo ""
+        usage
+        exit 1 ;;
+esac

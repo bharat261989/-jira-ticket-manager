@@ -3,7 +3,9 @@ package org.limits.api;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.limits.task.*;
+import org.limits.task.BackgroundTask;
+import org.limits.task.TaskResult;
+import org.limits.task.TaskScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,26 +35,10 @@ public class TaskResource {
      * GET /api/tasks
      */
     @GET
-    public Response listTasks(@QueryParam("category") String category) {
-        List<TaskInfo> tasks;
-
-        if (category != null) {
-            try {
-                TaskCategory cat = TaskCategory.valueOf(category.toUpperCase());
-                tasks = taskScheduler.getTasksByCategory(cat).stream()
-                        .map(this::toTaskInfo)
-                        .toList();
-            } catch (IllegalArgumentException e) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("Invalid category: " + category))
-                        .build();
-            }
-        } else {
-            tasks = taskScheduler.getAllTasks().stream()
-                    .map(this::toTaskInfo)
-                    .toList();
-        }
-
+    public Response listTasks() {
+        List<TaskInfo> tasks = taskScheduler.getAllTasks().stream()
+                .map(this::toTaskInfo)
+                .toList();
         return Response.ok(tasks).build();
     }
 
@@ -196,7 +182,6 @@ public class TaskResource {
         TaskInfo info = new TaskInfo();
         info.setTaskId(task.getTaskId());
         info.setTaskName(task.getTaskName());
-        info.setCategory(task.getCategory().name());
         info.setEnabled(task.isEnabled());
         info.setIntervalMinutes(task.getIntervalMinutes());
         info.setRunning(taskScheduler.isTaskRunning(task.getTaskId()));
@@ -214,7 +199,6 @@ public class TaskResource {
     public static class TaskInfo {
         private String taskId;
         private String taskName;
-        private String category;
         private boolean enabled;
         private int intervalMinutes;
         private boolean running;
@@ -225,8 +209,6 @@ public class TaskResource {
         public void setTaskId(String taskId) { this.taskId = taskId; }
         public String getTaskName() { return taskName; }
         public void setTaskName(String taskName) { this.taskName = taskName; }
-        public String getCategory() { return category; }
-        public void setCategory(String category) { this.category = category; }
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
         public int getIntervalMinutes() { return intervalMinutes; }

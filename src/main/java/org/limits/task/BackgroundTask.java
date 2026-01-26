@@ -13,11 +13,6 @@ public interface BackgroundTask<T extends TaskConfig> {
     String getTaskName();
 
     /**
-     * Category this task belongs to
-     */
-    TaskCategory getCategory();
-
-    /**
      * Get the configuration for this task
      */
     T getConfig();

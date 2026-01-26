@@ -45,7 +45,7 @@ public class TaskScheduler implements Managed {
     public void registerTask(BackgroundTask<?> task) {
         String taskId = task.getTaskId();
         tasks.put(taskId, task);
-        LOG.info("Registered task: {} ({}) - category: {}", task.getTaskName(), taskId, task.getCategory());
+        LOG.info("Registered task: {} ({})", task.getTaskName(), taskId);
     }
 
     /**
@@ -151,15 +151,6 @@ public class TaskScheduler implements Managed {
      */
     public Optional<BackgroundTask<?>> getTask(String taskId) {
         return Optional.ofNullable(tasks.get(taskId));
-    }
-
-    /**
-     * Get tasks by category
-     */
-    public List<BackgroundTask<?>> getTasksByCategory(TaskCategory category) {
-        return tasks.values().stream()
-                .filter(t -> t.getCategory() == category)
-                .toList();
     }
 
     /**

@@ -6,7 +6,6 @@ import com.atlassian.jira.rest.client.api.domain.Transition;
 import org.limits.client.JiraClient;
 import org.limits.config.JiraConfiguration.StaleIssueCleanupTaskConfig;
 import org.limits.task.AbstractBackgroundTask;
-import org.limits.task.TaskCategory;
 import org.limits.task.TaskResult;
 
 import java.time.Instant;
@@ -37,11 +36,6 @@ public class StaleIssueCleanupTask extends AbstractBackgroundTask<StaleIssueClea
     @Override
     public String getTaskName() {
         return TASK_NAME;
-    }
-
-    @Override
-    public TaskCategory getCategory() {
-        return TaskCategory.CLEANUP;
     }
 
     @Override
