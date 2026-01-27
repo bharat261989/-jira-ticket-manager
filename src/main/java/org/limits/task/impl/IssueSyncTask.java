@@ -35,6 +35,13 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter JQL_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    // ANSI escape codes for styling
+    private static final String BOLD = "\u001B[1m";
+    private static final String YELLOW = "\u001B[33m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String GREEN = "\u001B[32m";
+    private static final String RESET = "\u001B[0m";
+
     private final JiraClient jiraClient;
     private final String baseProject;
 
@@ -85,6 +92,7 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
                     // Determine if new or updated based on creation date vs last sync
                     if (lastSyncTime == null || isNewIssue(issue, lastSyncTime)) {
                         newIssues++;
+                        printNewTicketNotification(issue);
                     } else {
                         updatedIssues++;
                     }
@@ -153,6 +161,30 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
         jql.append(" ORDER BY updated DESC");
         return jql.toString();
+    }
+
+    /**
+     * Print a bold notification for new tickets to stdout
+     */
+    private void printNewTicketNotification(Issue issue) {
+        String priority = issue.getPriority() != null ? issue.getPriority().getName() : "None";
+        String assignee = issue.getAssignee() != null ? issue.getAssignee().getDisplayName() : "Unassigned";
+        String status = issue.getStatus() != null ? issue.getStatus().getName() : "Unknown";
+
+        System.out.println();
+        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
+        System.out.println(BOLD + YELLOW + "  🆕 NEW TICKET" + RESET);
+        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
+        System.out.println(BOLD + CYAN + "  Key:      " + RESET + BOLD + issue.getKey() + RESET);
+        System.out.println(BOLD + CYAN + "  Summary:  " + RESET + issue.getSummary());
+        System.out.println(BOLD + CYAN + "  Priority: " + RESET + priority);
+        System.out.println(BOLD + CYAN + "  Status:   " + RESET + status);
+        System.out.println(BOLD + CYAN + "  Assignee: " + RESET + assignee);
+        if (issue.getDueDate() != null) {
+            System.out.println(BOLD + CYAN + "  Due Date: " + RESET + formatJiraDate(issue.getDueDate()));
+        }
+        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
+        System.out.println();
     }
 
     /**
