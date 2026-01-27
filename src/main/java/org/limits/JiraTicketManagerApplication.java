@@ -92,7 +92,11 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
     private void registerTasks(TaskScheduler scheduler, TasksConfig tasksConfig,
                                JiraClient jiraClient, JiraConfig jiraConfig) {
         // Register Issue Sync Task
-        scheduler.registerTask(new IssueSyncTask(tasksConfig.getIssueSync(), jiraClient));
+        scheduler.registerTask(new IssueSyncTask(
+                tasksConfig.getIssueSync(),
+                jiraClient,
+                jiraConfig.getBaseProject()
+        ));
 
         // Register Stale Issue Cleanup Task
         scheduler.registerTask(new StaleIssueCleanupTask(tasksConfig.getStaleIssueCleanup(), jiraClient));
