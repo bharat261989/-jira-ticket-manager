@@ -113,6 +113,9 @@ public class HoconConfigLoader {
         issueSyncConfig.setInitialDelayMinutes(issueSyncConf.getInt("initialDelayMinutes"));
         issueSyncConfig.setJqlFilter(issueSyncConf.getString("jqlFilter"));
         issueSyncConfig.setBatchSize(issueSyncConf.getInt("batchSize"));
+        if (issueSyncConf.hasPath("minTicketNumber")) {
+            issueSyncConfig.setMinTicketNumber(issueSyncConf.getInt("minTicketNumber"));
+        }
         tasksConfig.setIssueSync(issueSyncConfig);
 
         // Stale Issue Cleanup Task

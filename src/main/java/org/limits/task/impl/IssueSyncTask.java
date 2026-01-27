@@ -15,16 +15,16 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Task that syncs unresolved issues from Jira for the configured base project.
  *
  * Features:
  * - Tracks last sync time in a file to fetch only updated issues
- * - Saves all synced issues to a CSV file
+ * - Saves synced issues to a CSV file incrementally
  * - Filters: project = baseProject AND resolution = Unresolved
+ * - Excludes tickets with labels: anchore, SecurityCentral
+ * - Optional: skip tickets before a minimum ticket number
  */
 public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
@@ -44,6 +44,10 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
     private final JiraClient jiraClient;
     private final String baseProject;
+
+    // CSV writer for incremental writing
+    private PrintWriter csvWriter;
+    private Path csvPath;
 
     public IssueSyncTask(IssueSyncTaskConfig config, JiraClient jiraClient, String baseProject) {
         super(config);
@@ -65,29 +69,43 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     @Override
     protected TaskResult doExecute(Instant startTime) {
         int batchSize = config.getBatchSize();
+        int minTicketNumber = config.getMinTicketNumber();
 
         // Read last sync time
         LocalDateTime lastSyncTime = readLastSyncTime();
 
         // Build JQL query
-        String jql = buildJqlQuery(lastSyncTime);
+        String jql = buildJqlQuery(lastSyncTime, minTicketNumber);
 
         log.info("Starting issue sync for project {} with JQL: {} (batch size: {})",
                 baseProject, jql, batchSize);
 
-        List<Issue> allIssues = new ArrayList<>();
         int totalProcessed = 0;
         int startAt = 0;
         int newIssues = 0;
         int updatedIssues = 0;
+        int skippedIssues = 0;
 
         try {
+            // Initialize CSV file with header
+            initializeCsvFile();
+
             while (true) {
                 SearchResult result = jiraClient.searchIssues(jql, startAt, batchSize);
                 int fetched = 0;
 
                 for (Issue issue : result.getIssues()) {
-                    allIssues.add(issue);
+                    // Check if ticket number is below minimum (additional safety check)
+                    if (minTicketNumber > 0 && getTicketNumber(issue.getKey()) < minTicketNumber) {
+                        skippedIssues++;
+                        log.debug("Skipping {} (below minimum ticket number {})",
+                                issue.getKey(), minTicketNumber);
+                        fetched++;
+                        continue;
+                    }
+
+                    // Write to CSV immediately
+                    appendToCsv(issue);
 
                     // Determine if new or updated based on creation date vs last sync
                     if (lastSyncTime == null || isNewIssue(issue, lastSyncTime)) {
@@ -101,39 +119,42 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
                     totalProcessed++;
                 }
 
-                log.debug("Fetched {} issues (total: {})", fetched, totalProcessed);
+                log.debug("Fetched {} issues (total processed: {}, skipped: {})",
+                        fetched, totalProcessed, skippedIssues);
 
-                if (fetched < batchSize || totalProcessed >= result.getTotal()) {
+                if (fetched < batchSize || (totalProcessed + skippedIssues) >= result.getTotal()) {
                     break;
                 }
 
                 startAt += batchSize;
             }
 
-            // Save issues to CSV
-            String csvPath = saveToCsv(allIssues);
+            // Close CSV file
+            closeCsvFile();
 
             // Update last sync time
             saveLastSyncTime(startTime);
 
-            log.info("Issue sync completed. Total: {}, New: {}, Updated: {}. CSV saved to: {}",
-                    totalProcessed, newIssues, updatedIssues, csvPath);
+            log.info("Issue sync completed. Total: {}, New: {}, Updated: {}, Skipped: {}. CSV saved to: {}",
+                    totalProcessed, newIssues, updatedIssues, skippedIssues, csvPath.toAbsolutePath());
 
             return TaskResult.builder(getTaskId())
                     .success()
-                    .message(String.format("Synced %d issues (%d new, %d updated)",
-                            totalProcessed, newIssues, updatedIssues))
+                    .message(String.format("Synced %d issues (%d new, %d updated, %d skipped)",
+                            totalProcessed, newIssues, updatedIssues, skippedIssues))
                     .startTime(startTime)
                     .endTime(Instant.now())
                     .addMetadata("totalIssues", totalProcessed)
                     .addMetadata("newIssues", newIssues)
                     .addMetadata("updatedIssues", updatedIssues)
-                    .addMetadata("csvFile", csvPath)
+                    .addMetadata("skippedIssues", skippedIssues)
+                    .addMetadata("csvFile", csvPath.toAbsolutePath().toString())
                     .addMetadata("project", baseProject)
                     .build();
 
         } catch (Exception e) {
             log.error("Issue sync failed", e);
+            closeCsvFile();
             return TaskResult.builder(getTaskId())
                     .failure()
                     .message("Sync failed: " + e.getMessage())
@@ -147,20 +168,45 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
     /**
      * Build JQL query for unresolved issues in the base project.
+     * Excludes tickets with labels: anchore, SecurityCentral
      * If lastSyncTime is available, only fetch issues updated since then.
+     * If minTicketNumber is set, only fetch issues with key >= that number.
      */
-    private String buildJqlQuery(LocalDateTime lastSyncTime) {
+    private String buildJqlQuery(LocalDateTime lastSyncTime, int minTicketNumber) {
         StringBuilder jql = new StringBuilder();
         jql.append("project = ").append(baseProject);
         jql.append(" AND resolution = Unresolved");
+
+        // Exclude specific labels
+        jql.append(" AND labels NOT IN (\"anchore\", \"SecurityCentral\")");
 
         if (lastSyncTime != null) {
             String formattedTime = lastSyncTime.format(JQL_DATE_FORMATTER);
             jql.append(" AND updated >= \"").append(formattedTime).append("\"");
         }
 
-        jql.append(" ORDER BY updated DESC");
+        // Filter by minimum ticket number using key comparison
+        if (minTicketNumber > 0) {
+            jql.append(" AND key >= ").append(baseProject).append("-").append(minTicketNumber);
+        }
+
+        jql.append(" ORDER BY key ASC");
         return jql.toString();
+    }
+
+    /**
+     * Extract the numeric part of a ticket key (e.g., "PROJ-123" -> 123)
+     */
+    private int getTicketNumber(String issueKey) {
+        if (issueKey == null || !issueKey.contains("-")) {
+            return 0;
+        }
+        try {
+            String numberPart = issueKey.substring(issueKey.lastIndexOf('-') + 1);
+            return Integer.parseInt(numberPart);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /**
@@ -236,23 +282,34 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     }
 
     /**
-     * Save issues to CSV file
+     * Initialize CSV file with header
      */
-    private String saveToCsv(List<Issue> issues) throws IOException {
-        Path csvPath = Paths.get(CSV_OUTPUT_FILE);
+    private void initializeCsvFile() throws IOException {
+        csvPath = Paths.get(CSV_OUTPUT_FILE);
+        csvWriter = new PrintWriter(new BufferedWriter(new FileWriter(csvPath.toFile())));
+        csvWriter.println("Key,Summary,Priority,Status,Assignee,Created Date,Updated Date,Due Date");
+        csvWriter.flush();
+        log.debug("Initialized CSV file: {}", csvPath.toAbsolutePath());
+    }
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(csvPath.toFile()))) {
-            // Write header
-            writer.println("Key,Summary,Priority,Status,Assignee,Created Date,Updated Date,Due Date");
-
-            // Write each issue
-            for (Issue issue : issues) {
-                writer.println(formatIssueCsvRow(issue));
-            }
+    /**
+     * Append a single issue to the CSV file
+     */
+    private void appendToCsv(Issue issue) {
+        if (csvWriter != null) {
+            csvWriter.println(formatIssueCsvRow(issue));
+            csvWriter.flush();
         }
+    }
 
-        log.info("Saved {} issues to {}", issues.size(), csvPath.toAbsolutePath());
-        return csvPath.toAbsolutePath().toString();
+    /**
+     * Close the CSV file
+     */
+    private void closeCsvFile() {
+        if (csvWriter != null) {
+            csvWriter.close();
+            csvWriter = null;
+        }
     }
 
     /**

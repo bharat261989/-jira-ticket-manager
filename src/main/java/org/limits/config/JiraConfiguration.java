@@ -89,6 +89,14 @@ public class JiraConfiguration extends Configuration {
         @JsonProperty
         private int batchSize = 100;
 
+        /**
+         * Optional: minimum ticket number to process.
+         * Issues with key < PROJECT-{minTicketNumber} will be skipped.
+         * Set to 0 to disable (default).
+         */
+        @JsonProperty
+        private int minTicketNumber = 0;
+
         public IssueSyncTaskConfig() {
             setIntervalMinutes(30);
         }
@@ -107,6 +115,14 @@ public class JiraConfiguration extends Configuration {
 
         public void setBatchSize(int batchSize) {
             this.batchSize = batchSize;
+        }
+
+        public int getMinTicketNumber() {
+            return minTicketNumber;
+        }
+
+        public void setMinTicketNumber(int minTicketNumber) {
+            this.minTicketNumber = minTicketNumber;
         }
     }
 
