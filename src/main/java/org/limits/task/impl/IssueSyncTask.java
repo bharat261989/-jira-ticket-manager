@@ -177,8 +177,8 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         jql.append("project = ").append(baseProject);
         jql.append(" AND resolution = Unresolved");
 
-        // Exclude specific labels
-        jql.append(" AND labels NOT IN (\"anchore\", \"SecurityCentral\")");
+        // Exclude specific labels (but allow empty labels)
+        jql.append(" AND (labels IS EMPTY OR labels NOT IN (\"anchore\", \"SecurityCentral\"))");
 
         if (lastSyncTime != null) {
             String formattedTime = lastSyncTime.format(JQL_DATE_FORMATTER);
