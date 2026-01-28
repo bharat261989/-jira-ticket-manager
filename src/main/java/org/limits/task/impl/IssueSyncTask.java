@@ -210,27 +210,17 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     }
 
     /**
-     * Print a bold notification for new tickets to stdout
+     * Print a bold single-line notification for new tickets to stdout
      */
     private void printNewTicketNotification(Issue issue) {
         String priority = issue.getPriority() != null ? issue.getPriority().getName() : "None";
         String assignee = issue.getAssignee() != null ? issue.getAssignee().getDisplayName() : "Unassigned";
         String status = issue.getStatus() != null ? issue.getStatus().getName() : "Unknown";
 
-        System.out.println();
-        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
-        System.out.println(BOLD + YELLOW + "  🆕 NEW TICKET" + RESET);
-        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
-        System.out.println(BOLD + CYAN + "  Key:      " + RESET + BOLD + issue.getKey() + RESET);
-        System.out.println(BOLD + CYAN + "  Summary:  " + RESET + issue.getSummary());
-        System.out.println(BOLD + CYAN + "  Priority: " + RESET + priority);
-        System.out.println(BOLD + CYAN + "  Status:   " + RESET + status);
-        System.out.println(BOLD + CYAN + "  Assignee: " + RESET + assignee);
-        if (issue.getDueDate() != null) {
-            System.out.println(BOLD + CYAN + "  Due Date: " + RESET + formatJiraDate(issue.getDueDate()));
-        }
-        System.out.println(BOLD + YELLOW + "══════════════════════════════════════════════════════════════" + RESET);
-        System.out.println();
+        System.out.println(BOLD + YELLOW + "🆕 NEW " + RESET
+                + BOLD + "[" + issue.getKey() + "]" + RESET
+                + " " + issue.getSummary()
+                + CYAN + " | " + priority + " | " + status + " | " + assignee + RESET);
     }
 
     /**
