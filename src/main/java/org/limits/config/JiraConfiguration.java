@@ -45,6 +45,9 @@ public class JiraConfiguration extends Configuration {
         @JsonProperty
         private StaleIssueCleanupTaskConfig staleIssueCleanup = new StaleIssueCleanupTaskConfig();
 
+        @JsonProperty
+        private CommentWatchTaskConfig commentWatch = new CommentWatchTaskConfig();
+
         public int getSchedulerPoolSize() {
             return schedulerPoolSize;
         }
@@ -75,6 +78,14 @@ public class JiraConfiguration extends Configuration {
 
         public void setStaleIssueCleanup(StaleIssueCleanupTaskConfig staleIssueCleanup) {
             this.staleIssueCleanup = staleIssueCleanup;
+        }
+
+        public CommentWatchTaskConfig getCommentWatch() {
+            return commentWatch;
+        }
+
+        public void setCommentWatch(CommentWatchTaskConfig commentWatch) {
+            this.commentWatch = commentWatch;
         }
     }
 
@@ -167,6 +178,28 @@ public class JiraConfiguration extends Configuration {
 
         public void setDryRun(boolean dryRun) {
             this.dryRun = dryRun;
+        }
+    }
+
+    /**
+     * Configuration for comment watch task
+     */
+    public static class CommentWatchTaskConfig extends TaskConfig {
+
+        @JsonProperty
+        private int maxCommentLength = 200;
+
+        public CommentWatchTaskConfig() {
+            setIntervalMinutes(15);
+            setInitialDelayMinutes(2);
+        }
+
+        public int getMaxCommentLength() {
+            return maxCommentLength;
+        }
+
+        public void setMaxCommentLength(int maxCommentLength) {
+            this.maxCommentLength = maxCommentLength;
         }
     }
 

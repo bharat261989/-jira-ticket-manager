@@ -14,6 +14,7 @@ import org.limits.config.StartupValidator;
 import org.limits.health.JiraHealthCheck;
 import org.limits.task.TaskScheduler;
 import org.limits.task.impl.IssueSyncTask;
+import org.limits.task.impl.CommentWatchTask;
 import org.limits.task.impl.StaleIssueCleanupTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +102,12 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         // Register Stale Issue Cleanup Task
         scheduler.registerTask(new StaleIssueCleanupTask(tasksConfig.getStaleIssueCleanup(), jiraClient));
 
-        // Add more tasks here as needed
+        // Register Comment Watch Task
+        scheduler.registerTask(new CommentWatchTask(
+                tasksConfig.getCommentWatch(),
+                jiraClient,
+                jiraConfig.getBaseProject()
+        ));
         LOG.info("Registered {} background tasks for project: {}",
                 scheduler.getAllTasks().size(), jiraConfig.getBaseProject());
     }
