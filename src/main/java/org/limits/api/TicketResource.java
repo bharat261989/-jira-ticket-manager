@@ -2,6 +2,7 @@ package org.limits.api;
 
 import com.atlassian.jira.rest.client.api.domain.BasicIssue;
 import com.atlassian.jira.rest.client.api.domain.Issue;
+import com.atlassian.jira.rest.client.api.domain.IssueLink;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.api.domain.Transition;
 import com.atlassian.jira.rest.client.api.domain.input.ComplexIssueInputFieldValue;
@@ -243,7 +244,23 @@ public class TicketResource {
         response.setProject(issue.getProject() != null ? issue.getProject().getKey() : null);
         response.setCreated(issue.getCreationDate() != null ? issue.getCreationDate().toString() : null);
         response.setUpdated(issue.getUpdateDate() != null ? issue.getUpdateDate().toString() : null);
+        response.setLinkedIssues(toLinkedIssues(issue));
         return response;
+    }
+
+    private List<LinkedIssueInfo> toLinkedIssues(Issue issue) {
+        Iterable<IssueLink> links = issue.getIssueLinks();
+        if (links == null) {
+            return List.of();
+        }
+        List<LinkedIssueInfo> linkedIssues = new ArrayList<>();
+        for (IssueLink link : links) {
+            String linkType = link.getIssueLinkType() != null
+                    ? link.getIssueLinkType().getDescription()
+                    : "linked to";
+            linkedIssues.add(new LinkedIssueInfo(link.getTargetIssueKey(), linkType));
+        }
+        return linkedIssues;
     }
 
     private SearchResultResponse toSearchResponse(SearchResult result, int startAt, int maxResults) {
@@ -276,6 +293,7 @@ public class TicketResource {
         private String project;
         private String created;
         private String updated;
+        private List<LinkedIssueInfo> linkedIssues;
 
         public String getKey() { return key; }
         public void setKey(String key) { this.key = key; }
@@ -301,6 +319,23 @@ public class TicketResource {
         public void setCreated(String created) { this.created = created; }
         public String getUpdated() { return updated; }
         public void setUpdated(String updated) { this.updated = updated; }
+        public List<LinkedIssueInfo> getLinkedIssues() { return linkedIssues; }
+        public void setLinkedIssues(List<LinkedIssueInfo> linkedIssues) { this.linkedIssues = linkedIssues; }
+    }
+
+    public static class LinkedIssueInfo {
+        private String issueKey;
+        private String linkType;
+
+        public LinkedIssueInfo(String issueKey, String linkType) {
+            this.issueKey = issueKey;
+            this.linkType = linkType;
+        }
+
+        public String getIssueKey() { return issueKey; }
+        public void setIssueKey(String issueKey) { this.issueKey = issueKey; }
+        public String getLinkType() { return linkType; }
+        public void setLinkType(String linkType) { this.linkType = linkType; }
     }
 
     public static class SearchResultResponse {

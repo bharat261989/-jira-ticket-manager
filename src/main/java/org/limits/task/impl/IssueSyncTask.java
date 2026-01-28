@@ -1,6 +1,7 @@
 package org.limits.task.impl;
 
 import com.atlassian.jira.rest.client.api.domain.Issue;
+import com.atlassian.jira.rest.client.api.domain.IssueLink;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import org.limits.client.JiraClient;
 import org.limits.config.JiraConfiguration.IssueSyncTaskConfig;
@@ -219,12 +220,37 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
         String created = formatJiraDate(issue.getCreationDate());
         String dueDate = issue.getDueDate() != null ? " | Due: " + formatJiraDate(issue.getDueDate()) : "";
+        String links = formatLinkedIssues(issue);
+        String linksDisplay = links.isEmpty() ? "" : " | Links: " + links;
 
         System.out.println(BOLD + YELLOW + "🆕 NEW " + RESET
                 + BOLD + "[" + issue.getKey() + "]" + RESET
                 + " " + issue.getSummary()
                 + CYAN + " | " + priority + " | " + status + " | " + assignee
-                + " | Created: " + created + dueDate + RESET);
+                + " | Created: " + created + dueDate + linksDisplay + RESET);
+    }
+
+    /**
+     * Format linked issues as a compact string.
+     * Example: "caused by NOC-789, blocks LM-456"
+     */
+    private String formatLinkedIssues(Issue issue) {
+        Iterable<IssueLink> links = issue.getIssueLinks();
+        if (links == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (IssueLink link : links) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            String linkType = link.getIssueLinkType() != null
+                    ? link.getIssueLinkType().getDescription()
+                    : "linked to";
+            sb.append(linkType).append(" ").append(link.getTargetIssueKey());
+        }
+        return sb.toString();
     }
 
     /**
@@ -281,7 +307,7 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     private void initializeCsvFile() throws IOException {
         csvPath = Paths.get(CSV_OUTPUT_FILE);
         csvWriter = new PrintWriter(new BufferedWriter(new FileWriter(csvPath.toFile())));
-        csvWriter.println("Key,Summary,Priority,Status,Assignee,Created Date,Updated Date,Due Date");
+        csvWriter.println("Key,Summary,Priority,Status,Assignee,Created Date,Updated Date,Due Date,Linked Issues");
         csvWriter.flush();
         log.debug("Initialized CSV file: {}", csvPath.toAbsolutePath());
     }
@@ -340,7 +366,10 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
 
         // Due Date
         String dueDate = formatJiraDate(issue.getDueDate());
-        row.append(escapeCsv(dueDate));
+        row.append(escapeCsv(dueDate)).append(",");
+
+        // Linked Issues
+        row.append(escapeCsv(formatLinkedIssues(issue)));
 
         return row.toString();
     }
