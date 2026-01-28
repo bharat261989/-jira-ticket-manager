@@ -217,10 +217,14 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         String assignee = issue.getAssignee() != null ? issue.getAssignee().getDisplayName() : "Unassigned";
         String status = issue.getStatus() != null ? issue.getStatus().getName() : "Unknown";
 
+        String created = formatJiraDate(issue.getCreationDate());
+        String dueDate = issue.getDueDate() != null ? " | Due: " + formatJiraDate(issue.getDueDate()) : "";
+
         System.out.println(BOLD + YELLOW + "🆕 NEW " + RESET
                 + BOLD + "[" + issue.getKey() + "]" + RESET
                 + " " + issue.getSummary()
-                + CYAN + " | " + priority + " | " + status + " | " + assignee + RESET);
+                + CYAN + " | " + priority + " | " + status + " | " + assignee
+                + " | Created: " + created + dueDate + RESET);
     }
 
     /**
