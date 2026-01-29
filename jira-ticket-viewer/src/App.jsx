@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import IssueTable from './IssueTable'
+import { CURRENT_USER } from './config'
 
 function parseCSV(text) {
   const lines = text.trim().split('\n')
@@ -165,6 +166,7 @@ function App() {
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState(null)
   const [severityFilter, setSeverityFilter] = useState(null)
+  const [myIssuesOnly, setMyIssuesOnly] = useState(false)
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [pageSize, setPageSize] = useState(50)
@@ -198,12 +200,18 @@ function App() {
   // Reset to page 1 when filters/search change
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, dateFilter, severityFilter])
+  }, [search, dateFilter, severityFilter, myIssuesOnly])
 
   // Check if any issues have Severity data (for conditional UI rendering)
   const hasSeverityData = issues.some(issue => issue['Severity'])
 
   const filtered = issues.filter(issue => {
+    // My Issues filter
+    if (myIssuesOnly && CURRENT_USER) {
+      const assignee = issue['Assignee'] || ''
+      if (assignee.toLowerCase() !== CURRENT_USER.toLowerCase()) return false
+    }
+
     // Date filter
     if (!matchesDateFilter(issue, dateFilter)) return false
 
@@ -254,6 +262,16 @@ function App() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        {CURRENT_USER && (
+          <div className="user-filter">
+            <button
+              className={`filter-btn my-issues-btn ${myIssuesOnly ? 'active' : ''}`}
+              onClick={() => setMyIssuesOnly(!myIssuesOnly)}
+            >
+              My Issues
+            </button>
+          </div>
+        )}
         <div className="date-filters">
           <button
             className={`filter-btn ${dateFilter === null ? 'active' : ''}`}

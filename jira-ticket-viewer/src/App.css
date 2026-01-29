@@ -91,6 +91,21 @@
   border-color: #4338ca;
 }
 
+/* My Issues Filter */
+.user-filter {
+  display: flex;
+}
+
+.my-issues-btn.active {
+  background: #059669;
+  border-color: #059669;
+}
+
+.my-issues-btn.active:hover {
+  background: #047857;
+  border-color: #047857;
+}
+
 /* Severity Filters */
 .severity-filters {
   display: flex;

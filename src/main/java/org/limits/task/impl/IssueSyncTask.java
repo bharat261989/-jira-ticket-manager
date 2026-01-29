@@ -309,7 +309,7 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     private void initializeCsvFile() throws IOException {
         csvPath = Paths.get(CSV_OUTPUT_FILE);
         csvWriter = new PrintWriter(new BufferedWriter(new FileWriter(csvPath.toFile())));
-        csvWriter.println("Key,Summary,Priority,Status,Severity,Assignee,Created Date,Updated Date,Due Date,Comments,Linked Issues");
+        csvWriter.println("Key,Type,Summary,Status,Priority,Severity,Assignee,Reporter,Created,Updated,Comments,Labels,Linked Issues");
         csvWriter.flush();
         log.debug("Initialized CSV file: {}", csvPath.toAbsolutePath());
     }
@@ -343,16 +343,20 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         // Key
         row.append(escapeCsv(issue.getKey())).append(",");
 
+        // Type
+        String type = issue.getIssueType() != null ? issue.getIssueType().getName() : "";
+        row.append(escapeCsv(type)).append(",");
+
         // Summary (sanitize newlines to keep CSV on single line)
         row.append(escapeCsv(sanitizeForConsole(issue.getSummary()))).append(",");
-
-        // Priority
-        String priority = issue.getPriority() != null ? issue.getPriority().getName() : "";
-        row.append(escapeCsv(priority)).append(",");
 
         // Status
         String status = issue.getStatus() != null ? issue.getStatus().getName() : "";
         row.append(escapeCsv(status)).append(",");
+
+        // Priority
+        String priority = issue.getPriority() != null ? issue.getPriority().getName() : "";
+        row.append(escapeCsv(priority)).append(",");
 
         // Severity (custom field - may not exist in all Jira instances)
         String severity = extractSeverity(issue);
@@ -362,26 +366,48 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         String assignee = issue.getAssignee() != null ? issue.getAssignee().getDisplayName() : "Unassigned";
         row.append(escapeCsv(assignee)).append(",");
 
-        // Created Date
+        // Reporter
+        String reporter = issue.getReporter() != null ? issue.getReporter().getDisplayName() : "";
+        row.append(escapeCsv(reporter)).append(",");
+
+        // Created
         String createdDate = formatJiraDate(issue.getCreationDate());
         row.append(escapeCsv(createdDate)).append(",");
 
-        // Updated Date
+        // Updated
         String updatedDate = formatJiraDate(issue.getUpdateDate());
         row.append(escapeCsv(updatedDate)).append(",");
-
-        // Due Date
-        String dueDate = formatJiraDate(issue.getDueDate());
-        row.append(escapeCsv(dueDate)).append(",");
 
         // Comment Count
         int commentCount = countComments(issue);
         row.append(commentCount).append(",");
 
+        // Labels
+        String labels = formatLabels(issue);
+        row.append(escapeCsv(labels)).append(",");
+
         // Linked Issues
         row.append(escapeCsv(formatLinkedIssues(issue)));
 
         return row.toString();
+    }
+
+    /**
+     * Format labels as a semicolon-separated string.
+     */
+    private String formatLabels(Issue issue) {
+        Iterable<String> labels = issue.getLabels();
+        if (labels == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String label : labels) {
+            if (sb.length() > 0) {
+                sb.append(";");
+            }
+            sb.append(label);
+        }
+        return sb.toString();
     }
 
     /**
