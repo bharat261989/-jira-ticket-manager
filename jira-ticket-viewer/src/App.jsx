@@ -128,12 +128,43 @@ function matchesDateFilter(issue, filterType) {
   return created >= range.start && created < range.end
 }
 
+// Severity filter helper - extracts numeric severity from various formats
+function getSeverityLevel(severity) {
+  if (!severity) return null
+  const s = severity.toLowerCase()
+  // Match patterns like "Sev 1", "Sev1", "Severity 1", "1", "S1", etc.
+  const match = s.match(/(\d)/)
+  return match ? parseInt(match[1], 10) : null
+}
+
+function matchesSeverityFilter(issue, filterType) {
+  if (!filterType) return true
+
+  const severity = issue['Severity'] || ''
+  const level = getSeverityLevel(severity)
+
+  // If issue has no severity, only show in "All" filter
+  if (level === null) return false
+
+  switch (filterType) {
+    case 'sev12':
+      return level === 1 || level === 2
+    case 'sev3':
+      return level === 3
+    case 'sev4plus':
+      return level >= 4
+    default:
+      return true
+  }
+}
+
 function App() {
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState(null)
+  const [severityFilter, setSeverityFilter] = useState(null)
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
 
@@ -162,9 +193,15 @@ function App() {
     }
   }
 
+  // Check if any issues have Severity data (for conditional UI rendering)
+  const hasSeverityData = issues.some(issue => issue['Severity'])
+
   const filtered = issues.filter(issue => {
     // Date filter
     if (!matchesDateFilter(issue, dateFilter)) return false
+
+    // Severity filter
+    if (!matchesSeverityFilter(issue, severityFilter)) return false
 
     // Text search
     if (!search) return true
@@ -230,6 +267,34 @@ function App() {
             Weekend
           </button>
         </div>
+        {hasSeverityData && (
+          <div className="severity-filters">
+            <button
+              className={`filter-btn severity-btn ${severityFilter === null ? 'active' : ''}`}
+              onClick={() => setSeverityFilter(null)}
+            >
+              All Sev
+            </button>
+            <button
+              className={`filter-btn severity-btn sev-12 ${severityFilter === 'sev12' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter(severityFilter === 'sev12' ? null : 'sev12')}
+            >
+              Sev 1/2
+            </button>
+            <button
+              className={`filter-btn severity-btn sev-3 ${severityFilter === 'sev3' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter(severityFilter === 'sev3' ? null : 'sev3')}
+            >
+              Sev 3
+            </button>
+            <button
+              className={`filter-btn severity-btn sev-4plus ${severityFilter === 'sev4plus' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter(severityFilter === 'sev4plus' ? null : 'sev4plus')}
+            >
+              Sev 4+
+            </button>
+          </div>
+        )}
         <span className="issue-count">
           {sorted.length} of {issues.length} issues
         </span>

@@ -309,7 +309,7 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     private void initializeCsvFile() throws IOException {
         csvPath = Paths.get(CSV_OUTPUT_FILE);
         csvWriter = new PrintWriter(new BufferedWriter(new FileWriter(csvPath.toFile())));
-        csvWriter.println("Key,Summary,Priority,Status,Assignee,Created Date,Updated Date,Due Date,Linked Issues");
+        csvWriter.println("Key,Summary,Priority,Status,Severity,Assignee,Created Date,Updated Date,Due Date,Linked Issues");
         csvWriter.flush();
         log.debug("Initialized CSV file: {}", csvPath.toAbsolutePath());
     }
@@ -354,6 +354,10 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         String status = issue.getStatus() != null ? issue.getStatus().getName() : "";
         row.append(escapeCsv(status)).append(",");
 
+        // Severity (custom field - may not exist in all Jira instances)
+        String severity = extractSeverity(issue);
+        row.append(escapeCsv(severity)).append(",");
+
         // Assignee
         String assignee = issue.getAssignee() != null ? issue.getAssignee().getDisplayName() : "Unassigned";
         row.append(escapeCsv(assignee)).append(",");
@@ -374,6 +378,58 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         row.append(escapeCsv(formatLinkedIssues(issue)));
 
         return row.toString();
+    }
+
+    /**
+     * Extract the Severity custom field value from an issue.
+     * Searches for a field named "Severity" (case-insensitive).
+     * Returns empty string if the field doesn't exist (graceful for Jira instances without this field).
+     */
+    private String extractSeverity(Issue issue) {
+        Iterable<com.atlassian.jira.rest.client.api.domain.IssueField> fields = issue.getFields();
+        if (fields == null) {
+            return "";
+        }
+
+        for (com.atlassian.jira.rest.client.api.domain.IssueField field : fields) {
+            String fieldName = field.getName();
+            if (fieldName != null && fieldName.equalsIgnoreCase("Severity")) {
+                Object value = field.getValue();
+                if (value == null) {
+                    return "";
+                }
+                // Handle different value types (string, JSONObject with "value" or "name" property)
+                if (value instanceof String) {
+                    return (String) value;
+                }
+                // For select fields, the value is often a JSONObject with a "value" or "name" key
+                String strValue = value.toString();
+                if (strValue.contains("\"value\"")) {
+                    // Try to extract value from JSON-like structure
+                    int start = strValue.indexOf("\"value\":\"");
+                    if (start >= 0) {
+                        start += 9;
+                        int end = strValue.indexOf("\"", start);
+                        if (end > start) {
+                            return strValue.substring(start, end);
+                        }
+                    }
+                }
+                if (strValue.contains("\"name\"")) {
+                    int start = strValue.indexOf("\"name\":\"");
+                    if (start >= 0) {
+                        start += 8;
+                        int end = strValue.indexOf("\"", start);
+                        if (end > start) {
+                            return strValue.substring(start, end);
+                        }
+                    }
+                }
+                // Fallback: return string representation
+                return strValue;
+            }
+        }
+        return "";
     }
 
     /**

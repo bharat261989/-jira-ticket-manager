@@ -105,12 +105,19 @@ public class CommentWatchTask extends AbstractBackgroundTask<CommentWatchTaskCon
                         Instant commentTime = Instant.ofEpochMilli(comment.getCreationDate().getMillis());
 
                         if (lastCheckTime == null || commentTime.isAfter(lastCheckTime)) {
-                            issueNewComments++;
-                            newCommentsFound++;
-
                             String author = comment.getAuthor() != null
                                     ? comment.getAuthor().getDisplayName()
                                     : "Unknown";
+
+                            // Skip automated comments if filtering is enabled
+                            if (config.isFilterAutomatedComments() && isAutomatedAuthor(author)) {
+                                log.debug("Skipping automated comment from '{}' on {}", author, issueKey);
+                                continue;
+                            }
+
+                            issueNewComments++;
+                            newCommentsFound++;
+
                             String body = comment.getBody() != null ? comment.getBody() : "";
 
                             printCommentNotification(issueKey, author, body);
@@ -277,6 +284,50 @@ public class CommentWatchTask extends AbstractBackgroundTask<CommentWatchTaskCon
             return text;
         }
         return text.substring(0, maxLength) + "...";
+    }
+
+    /**
+     * Check if an author name matches any of the configured automated/bot patterns.
+     * Patterns support * as a wildcard (matches any characters).
+     */
+    private boolean isAutomatedAuthor(String authorName) {
+        if (authorName == null || authorName.isEmpty()) {
+            return false;
+        }
+
+        for (String pattern : config.getAutomatedAuthorPatterns()) {
+            if (matchesPattern(authorName, pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Match a string against a pattern with wildcard support.
+     * * matches zero or more characters.
+     */
+    private boolean matchesPattern(String text, String pattern) {
+        if (pattern == null || pattern.isEmpty()) {
+            return false;
+        }
+
+        // Convert glob pattern to regex: escape special chars, replace * with .*
+        String regex = pattern
+                .replace(".", "\\.")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("?", "\\?")
+                .replace("*", ".*");
+
+        try {
+            return text.matches("(?i)" + regex);  // Case-insensitive match
+        } catch (Exception e) {
+            log.warn("Invalid pattern '{}': {}", pattern, e.getMessage());
+            return false;
+        }
     }
 
     /**

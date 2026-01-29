@@ -1,9 +1,12 @@
+import { getIssueUrl } from './config'
+
 const COLUMNS = [
   { key: 'Key', label: 'Key' },
   { key: 'Type', label: 'Type' },
   { key: 'Summary', label: 'Summary' },
   { key: 'Status', label: 'Status' },
   { key: 'Priority', label: 'Priority' },
+  { key: 'Severity', label: 'Severity' },
   { key: 'Assignee', label: 'Assignee' },
   { key: 'Reporter', label: 'Reporter' },
   { key: 'Created', label: 'Created' },
@@ -37,8 +40,26 @@ function typeClass(type) {
   return ''
 }
 
+function severityClass(severity) {
+  const s = (severity || '').toLowerCase()
+  if (s.includes('1') || s.includes('sev1') || s.includes('sev 1')) return 'severity-1'
+  if (s.includes('2') || s.includes('sev2') || s.includes('sev 2')) return 'severity-2'
+  if (s.includes('3') || s.includes('sev3') || s.includes('sev 3')) return 'severity-3'
+  if (s.includes('4') || s.includes('sev4') || s.includes('sev 4')) return 'severity-4'
+  if (s.includes('5') || s.includes('sev5') || s.includes('sev 5')) return 'severity-5'
+  return ''
+}
+
 function renderCell(col, value) {
   if (col === 'Key') {
+    const url = getIssueUrl(value)
+    if (url) {
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="issue-key">
+          {value}
+        </a>
+      )
+    }
     return <span className="issue-key">{value}</span>
   }
   if (col === 'Priority') {
@@ -49,6 +70,10 @@ function renderCell(col, value) {
   }
   if (col === 'Type') {
     return <span className={`badge ${typeClass(value)}`}>{value}</span>
+  }
+  if (col === 'Severity') {
+    if (!value) return <span className="no-value">—</span>
+    return <span className={`badge ${severityClass(value)}`}>{value}</span>
   }
   if (col === 'Labels') {
     const labels = value ? value.split(';').filter(Boolean) : []

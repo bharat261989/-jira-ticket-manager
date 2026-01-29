@@ -189,6 +189,28 @@ public class JiraConfiguration extends Configuration {
         @JsonProperty
         private int maxCommentLength = 200;
 
+        /**
+         * If true, filter out comments from automated/bot authors.
+         * Default: false (show all comments)
+         */
+        @JsonProperty
+        private boolean filterAutomatedComments = false;
+
+        /**
+         * Patterns to match automated/bot author names.
+         * Supports wildcards: * matches any characters.
+         * Examples: "jirasd-telemetry-*", "Jira Event Publisher Notifications"
+         */
+        @JsonProperty
+        private java.util.List<String> automatedAuthorPatterns = java.util.Arrays.asList(
+                "jirasd-telemetry-*",
+                "Jira Event Publisher Notifications",
+                "Automation for Jira",
+                "*[Bot]*",
+                "*-bot",
+                "*-automation"
+        );
+
         public CommentWatchTaskConfig() {
             setIntervalMinutes(15);
             setInitialDelayMinutes(2);
@@ -200,6 +222,22 @@ public class JiraConfiguration extends Configuration {
 
         public void setMaxCommentLength(int maxCommentLength) {
             this.maxCommentLength = maxCommentLength;
+        }
+
+        public boolean isFilterAutomatedComments() {
+            return filterAutomatedComments;
+        }
+
+        public void setFilterAutomatedComments(boolean filterAutomatedComments) {
+            this.filterAutomatedComments = filterAutomatedComments;
+        }
+
+        public java.util.List<String> getAutomatedAuthorPatterns() {
+            return automatedAuthorPatterns;
+        }
+
+        public void setAutomatedAuthorPatterns(java.util.List<String> automatedAuthorPatterns) {
+            this.automatedAuthorPatterns = automatedAuthorPatterns;
         }
     }
 
