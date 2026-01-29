@@ -167,6 +167,8 @@ function App() {
   const [severityFilter, setSeverityFilter] = useState(null)
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [pageSize, setPageSize] = useState(50)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     fetch('/data/synced-issues.csv')
@@ -193,6 +195,11 @@ function App() {
     }
   }
 
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, dateFilter, severityFilter])
+
   // Check if any issues have Severity data (for conditional UI rendering)
   const hasSeverityData = issues.some(issue => issue['Severity'])
 
@@ -218,8 +225,20 @@ function App() {
     return 0
   })
 
+  // Pagination
+  const totalPages = Math.ceil(sorted.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginated = sorted.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters change
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize)
+    setCurrentPage(1)
+  }
+
   // Group issues by shared linked issue key
-  const groups = buildGroups(sorted)
+  const groups = buildGroups(paginated)
 
   return (
     <div className="app">
@@ -298,6 +317,56 @@ function App() {
         <span className="issue-count">
           {sorted.length} of {issues.length} issues
         </span>
+      </div>
+      <div className="pagination-bar">
+        <div className="page-size-selector">
+          <span>Show:</span>
+          {[10, 50, 100].map(size => (
+            <button
+              key={size}
+              className={`page-size-btn ${pageSize === size ? 'active' : ''}`}
+              onClick={() => handlePageSizeChange(size)}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+        <div className="page-controls">
+          <button
+            className="page-btn"
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+          >
+            ««
+          </button>
+          <button
+            className="page-btn"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            «
+          </button>
+          <span className="page-info">
+            Page {currentPage} of {totalPages || 1}
+          </span>
+          <button
+            className="page-btn"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            »
+          </button>
+          <button
+            className="page-btn"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage >= totalPages}
+          >
+            »»
+          </button>
+        </div>
+        <div className="page-range">
+          {sorted.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, sorted.length)}` : '0'} of {sorted.length}
+        </div>
       </div>
       <div className="table-container">
         {loading && <div className="loading">Loading issues...</div>}
