@@ -343,8 +343,8 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         // Key
         row.append(escapeCsv(issue.getKey())).append(",");
 
-        // Summary
-        row.append(escapeCsv(issue.getSummary())).append(",");
+        // Summary (sanitize newlines to keep CSV on single line)
+        row.append(escapeCsv(sanitizeForConsole(issue.getSummary()))).append(",");
 
         // Priority
         String priority = issue.getPriority() != null ? issue.getPriority().getName() : "";
