@@ -34,10 +34,10 @@ public class CommentWatchTask extends AbstractBackgroundTask<CommentWatchTaskCon
     private static final String CSV_INPUT_FILE = "data/synced-issues.csv";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // ANSI escape codes for styling
+    // ANSI escape codes for styling (distinct from IssueSyncTask's yellow theme)
     private static final String BOLD = "\u001B[1m";
-    private static final String YELLOW = "\u001B[33m";
-    private static final String CYAN = "\u001B[36m";
+    private static final String MAGENTA = "\u001B[35m";
+    private static final String GREEN = "\u001B[32m";
     private static final String RESET = "\u001B[0m";
 
     private final JiraClient jiraClient;
@@ -238,9 +238,9 @@ public class CommentWatchTask extends AbstractBackgroundTask<CommentWatchTaskCon
      */
     private void printCommentNotification(String issueKey, String author, String body) {
         String snippet = truncate(body, 100);
-        System.out.println(BOLD + YELLOW + "\uD83D\uDCAC COMMENT " + RESET
-                + BOLD + "[" + issueKey + "]" + RESET
-                + CYAN + " by " + author + RESET
+        System.out.println(BOLD + MAGENTA + "💬 COMMENT " + RESET
+                + BOLD + MAGENTA + "[" + issueKey + "]" + RESET
+                + GREEN + " by " + author + RESET
                 + " | " + snippet);
     }
 
