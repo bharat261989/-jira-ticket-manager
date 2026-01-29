@@ -309,7 +309,7 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
     private void initializeCsvFile() throws IOException {
         csvPath = Paths.get(CSV_OUTPUT_FILE);
         csvWriter = new PrintWriter(new BufferedWriter(new FileWriter(csvPath.toFile())));
-        csvWriter.println("Key,Summary,Priority,Status,Severity,Assignee,Created Date,Updated Date,Due Date,Linked Issues");
+        csvWriter.println("Key,Summary,Priority,Status,Severity,Assignee,Created Date,Updated Date,Due Date,Comments,Linked Issues");
         csvWriter.flush();
         log.debug("Initialized CSV file: {}", csvPath.toAbsolutePath());
     }
@@ -374,10 +374,29 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         String dueDate = formatJiraDate(issue.getDueDate());
         row.append(escapeCsv(dueDate)).append(",");
 
+        // Comment Count
+        int commentCount = countComments(issue);
+        row.append(commentCount).append(",");
+
         // Linked Issues
         row.append(escapeCsv(formatLinkedIssues(issue)));
 
         return row.toString();
+    }
+
+    /**
+     * Count the total number of comments on an issue.
+     */
+    private int countComments(Issue issue) {
+        Iterable<com.atlassian.jira.rest.client.api.domain.Comment> comments = issue.getComments();
+        if (comments == null) {
+            return 0;
+        }
+        int count = 0;
+        for (@SuppressWarnings("unused") com.atlassian.jira.rest.client.api.domain.Comment comment : comments) {
+            count++;
+        }
+        return count;
     }
 
     /**

@@ -11,6 +11,7 @@ const COLUMNS = [
   { key: 'Reporter', label: 'Reporter' },
   { key: 'Created', label: 'Created' },
   { key: 'Updated', label: 'Updated' },
+  { key: 'Comments', label: 'Comments' },
   { key: 'Labels', label: 'Labels' },
   { key: 'Linked Issues', label: 'Linked' },
 ]
@@ -74,6 +75,11 @@ function renderCell(col, value) {
   if (col === 'Severity') {
     if (!value) return <span className="no-value">—</span>
     return <span className={`badge ${severityClass(value)}`}>{value}</span>
+  }
+  if (col === 'Comments') {
+    const count = parseInt(value, 10) || 0
+    if (count === 0) return <span className="no-value">0</span>
+    return <span className="comment-count">{count}</span>
   }
   if (col === 'Labels') {
     const labels = value ? value.split(';').filter(Boolean) : []
