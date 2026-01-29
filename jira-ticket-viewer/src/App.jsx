@@ -67,11 +67,73 @@ function buildGroups(issues) {
   return result
 }
 
+// Date filter helper functions
+function getDateRange(filterType) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  switch (filterType) {
+    case 'today':
+      return { start: today, end: new Date(today.getTime() + 86400000) }
+    case 'yesterday':
+      return { start: yesterday, end: today }
+    case 'last2days':
+      return { start: yesterday, end: new Date(today.getTime() + 86400000) }
+    case 'weekend': {
+      // Find the most recent weekend (Saturday-Sunday)
+      const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+      let saturday, sunday
+
+      if (dayOfWeek === 0) {
+        // Today is Sunday - use yesterday (Sat) and today (Sun)
+        saturday = new Date(today)
+        saturday.setDate(saturday.getDate() - 1)
+        sunday = new Date(today.getTime() + 86400000)
+      } else if (dayOfWeek === 6) {
+        // Today is Saturday - use today (Sat) and tomorrow (Sun)
+        saturday = today
+        sunday = new Date(today)
+        sunday.setDate(sunday.getDate() + 2)
+      } else {
+        // Weekday - find last weekend
+        const daysToLastSunday = dayOfWeek
+        sunday = new Date(today)
+        sunday.setDate(sunday.getDate() - daysToLastSunday)
+        saturday = new Date(sunday)
+        saturday.setDate(saturday.getDate() - 1)
+        sunday = new Date(sunday.getTime() + 86400000) // End of Sunday
+      }
+      return { start: saturday, end: sunday }
+    }
+    default:
+      return null
+  }
+}
+
+function matchesDateFilter(issue, filterType) {
+  if (!filterType) return true
+
+  const createdStr = issue['Created Date'] || issue['Created']
+  if (!createdStr) return false
+
+  const created = new Date(createdStr)
+  if (isNaN(created.getTime())) return false
+
+  const range = getDateRange(filterType)
+  if (!range) return true
+
+  return created >= range.start && created < range.end
+}
+
 function App() {
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState(null)
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
 
@@ -101,6 +163,10 @@ function App() {
   }
 
   const filtered = issues.filter(issue => {
+    // Date filter
+    if (!matchesDateFilter(issue, dateFilter)) return false
+
+    // Text search
     if (!search) return true
     const q = search.toLowerCase()
     return Object.values(issue).some(v => v.toLowerCase().includes(q))
@@ -132,6 +198,38 @@ function App() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        <div className="date-filters">
+          <button
+            className={`filter-btn ${dateFilter === null ? 'active' : ''}`}
+            onClick={() => setDateFilter(null)}
+          >
+            All
+          </button>
+          <button
+            className={`filter-btn ${dateFilter === 'today' ? 'active' : ''}`}
+            onClick={() => setDateFilter(dateFilter === 'today' ? null : 'today')}
+          >
+            Today
+          </button>
+          <button
+            className={`filter-btn ${dateFilter === 'yesterday' ? 'active' : ''}`}
+            onClick={() => setDateFilter(dateFilter === 'yesterday' ? null : 'yesterday')}
+          >
+            Yesterday
+          </button>
+          <button
+            className={`filter-btn ${dateFilter === 'last2days' ? 'active' : ''}`}
+            onClick={() => setDateFilter(dateFilter === 'last2days' ? null : 'last2days')}
+          >
+            Last 2 Days
+          </button>
+          <button
+            className={`filter-btn ${dateFilter === 'weekend' ? 'active' : ''}`}
+            onClick={() => setDateFilter(dateFilter === 'weekend' ? null : 'weekend')}
+          >
+            Weekend
+          </button>
+        </div>
         <span className="issue-count">
           {sorted.length} of {issues.length} issues
         </span>
