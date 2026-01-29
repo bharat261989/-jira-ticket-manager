@@ -223,9 +223,11 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
         String links = formatLinkedIssues(issue);
         String linksDisplay = links.isEmpty() ? "" : " | Links: " + links;
 
+        String summary = sanitizeForConsole(issue.getSummary());
+
         System.out.println(BOLD + YELLOW + "🆕 NEW " + RESET
                 + BOLD + "[" + issue.getKey() + "]" + RESET
-                + " " + issue.getSummary()
+                + " " + summary
                 + CYAN + " | " + priority + " | " + status + " | " + assignee
                 + " | Created: " + created + dueDate + linksDisplay + RESET);
     }
@@ -386,6 +388,17 @@ public class IssueSyncTask extends AbstractBackgroundTask<IssueSyncTaskConfig> {
                 ZoneId.systemDefault()
         );
         return localDate.format(DATE_FORMATTER);
+    }
+
+    /**
+     * Sanitize text for single-line console output by replacing newlines and
+     * other control characters with spaces.
+     */
+    private String sanitizeForConsole(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("[\\r\\n\\t]+", " ").trim();
     }
 
     /**
