@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useReactTable, getCoreRowModel } from '@tanstack/react-table'
 import './App.css'
 import IssueTable from './IssueTable'
+import ColumnToggle from './ColumnToggle'
+import { columns } from './columns'
+import { useColumnPreferences } from './useColumnPreferences'
 import { CURRENT_USER } from './config'
 
 function parseCSV(text) {
@@ -172,6 +176,14 @@ function App() {
   const [pageSize, setPageSize] = useState(50)
   const [currentPage, setCurrentPage] = useState(1)
 
+  const {
+    columnVisibility,
+    columnSizing,
+    onColumnVisibilityChange,
+    onColumnSizingChange,
+    resetPreferences,
+  } = useColumnPreferences()
+
   useEffect(() => {
     fetch('/data/synced-issues.csv')
       .then(res => {
@@ -247,6 +259,24 @@ function App() {
 
   // Group issues by shared linked issue key
   const groups = buildGroups(paginated)
+
+  const flatIssues = useMemo(
+    () => groups.flatMap(g => g.issues),
+    [groups]
+  )
+
+  const table = useReactTable({
+    data: flatIssues,
+    columns,
+    state: {
+      columnVisibility,
+      columnSizing,
+    },
+    onColumnVisibilityChange,
+    onColumnSizingChange,
+    columnResizeMode: 'onChange',
+    getCoreRowModel: getCoreRowModel(),
+  })
 
   return (
     <div className="app">
@@ -332,6 +362,7 @@ function App() {
             </button>
           </div>
         )}
+        <ColumnToggle table={table} onReset={resetPreferences} />
         <span className="issue-count">
           {sorted.length} of {issues.length} issues
         </span>
@@ -391,6 +422,7 @@ function App() {
         {error && <div className="error-msg">Error: {error}</div>}
         {!loading && !error && (
           <IssueTable
+            table={table}
             groups={groups}
             sortCol={sortCol}
             sortDir={sortDir}

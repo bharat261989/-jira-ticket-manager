@@ -302,6 +302,7 @@
   white-space: nowrap;
   border-bottom: 2px solid #e2e5f1;
   transition: background 0.15s;
+  position: relative;
 }
 
 .issue-table th:hover {
@@ -319,6 +320,8 @@
   font-size: 0.85rem;
   border-bottom: 1px solid #f0f1f5;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .issue-table tbody tr:nth-child(even) {
@@ -470,6 +473,105 @@ a.issue-key:hover {
 
 .error-msg {
   color: #dc2626;
+}
+
+/* Column Resizer */
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.resizer:hover,
+.resizer.isResizing {
+  background: rgba(79, 70, 229, 0.3);
+}
+
+/* Column Toggle Dropdown */
+.column-toggle {
+  position: relative;
+}
+
+.column-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.column-toggle-icon {
+  font-size: 0.6rem;
+}
+
+.column-toggle-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.column-toggle-header {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.column-toggle-list {
+  padding: 0.25rem 0;
+}
+
+.column-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.column-toggle-item:hover {
+  background: #f3f4f6;
+}
+
+.column-toggle-item input[type="checkbox"] {
+  accent-color: #4f46e5;
+}
+
+.column-toggle-footer {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.column-toggle-reset {
+  width: 100%;
+  padding: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.column-toggle-reset:hover {
+  background: #f3f4f6;
+  color: #374151;
 }
 
 /* Responsive */
