@@ -33,4 +33,12 @@ function serveCsvPlugin() {
 
 export default defineConfig({
   plugins: [react(), serveCsvPlugin()],
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:8081',
+        changeOrigin: true,
+      },
+    },
+  },
 })

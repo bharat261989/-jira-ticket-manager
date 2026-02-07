@@ -6,6 +6,7 @@ import org.limits.config.JiraConfiguration.IssueSyncTaskConfig;
 import org.limits.config.JiraConfiguration.JiraConfig;
 import org.limits.config.JiraConfiguration.StaleIssueCleanupTaskConfig;
 import org.limits.config.JiraConfiguration.TasksConfig;
+import org.limits.config.ConfluenceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,6 +131,40 @@ public class HoconConfigLoader {
         tasksConfig.setStaleIssueCleanup(staleConfig);
 
         return tasksConfig;
+    }
+
+    /**
+     * Load Confluence configuration
+     */
+    public ConfluenceConfig loadConfluenceConfig() {
+        if (!config.hasPath("confluence")) {
+            return null;
+        }
+        Config conf = config.getConfig("confluence");
+        ConfluenceConfig confluenceConfig = new ConfluenceConfig();
+        confluenceConfig.setBaseUrl(conf.getString("baseUrl"));
+        String confluenceUser = conf.getString("username");
+        if (confluenceUser == null || confluenceUser.isBlank()) {
+            if (config.hasPath("jira") && config.getConfig("jira").hasPath("username")) {
+                confluenceUser = config.getConfig("jira").getString("username");
+                LOG.info("Confluence using Jira username (confluence.username not set)");
+            }
+        }
+        confluenceConfig.setUsername(confluenceUser != null ? confluenceUser : "admin");
+        String confluenceToken = conf.getString("apiToken");
+        if (confluenceToken == null || confluenceToken.isBlank() || "changeme".equals(confluenceToken)) {
+            if (config.hasPath("jira") && config.getConfig("jira").hasPath("apiToken")) {
+                confluenceToken = config.getConfig("jira").getString("apiToken");
+                LOG.info("Confluence using Jira API token (confluence.apiToken not set or default)");
+            }
+        }
+        confluenceConfig.setApiToken(confluenceToken != null ? confluenceToken : "");
+        confluenceConfig.setDefaultSpaceKey(conf.getString("defaultSpaceKey"));
+        confluenceConfig.setConnectionTimeout(conf.getInt("connectionTimeout"));
+        confluenceConfig.setReadTimeout(conf.getInt("readTimeout"));
+        LOG.info("Confluence config: baseUrl={}, defaultSpaceKey={}",
+                confluenceConfig.getBaseUrl(), confluenceConfig.getDefaultSpaceKey());
+        return confluenceConfig;
     }
 
     /**

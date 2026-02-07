@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useReactTable, getCoreRowModel } from '@tanstack/react-table'
 import './App.css'
 import IssueTable from './IssueTable'
@@ -6,6 +6,25 @@ import ColumnToggle from './ColumnToggle'
 import { columns } from './columns'
 import { useColumnPreferences } from './useColumnPreferences'
 import { CURRENT_USER } from './config'
+
+// API base for report generation (proxied in dev)
+const API_BASE = ''
+
+function toISOLocal(d) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
+function lastTuesday10am(weeksAgo = 0) {
+  const d = new Date()
+  d.setHours(10, 0, 0, 0)
+  let day = d.getDay()
+  // Tuesday = 2; days since last Tuesday (0 = today if Tue)
+  let diff = day - 2
+  if (diff < 0) diff += 7
+  d.setDate(d.getDate() - diff - (7 * weeksAgo))
+  return d
+}
 
 function parseCSV(text) {
   const lines = text.trim().split('\n')
@@ -175,6 +194,13 @@ function App() {
   const [sortDir, setSortDir] = useState('asc')
   const [pageSize, setPageSize] = useState(50)
   const [currentPage, setCurrentPage] = useState(1)
+  const [reportPanelOpen, setReportPanelOpen] = useState(false)
+  const [reportStart, setReportStart] = useState(() => toISOLocal(lastTuesday10am(1)).slice(0, 16))
+  const [reportEnd, setReportEnd] = useState(() => toISOLocal(lastTuesday10am(0)).slice(0, 16))
+  const [reportSpaceKey, setReportSpaceKey] = useState('')
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportResult, setReportResult] = useState(null)
+  const [reportError, setReportError] = useState(null)
 
   const {
     columnVisibility,
@@ -256,6 +282,44 @@ function App() {
     setPageSize(newSize)
     setCurrentPage(1)
   }
+
+  const applyReportPreset = useCallback((preset) => {
+    if (preset === 'lastWeek') {
+      setReportStart(toISOLocal(lastTuesday10am(1)).slice(0, 16))
+      setReportEnd(toISOLocal(lastTuesday10am(0)).slice(0, 16))
+    }
+    setReportError(null)
+    setReportResult(null)
+  }, [])
+
+  const generateReport = useCallback(async () => {
+    setReportError(null)
+    setReportResult(null)
+    setReportLoading(true)
+    try {
+      const start = new Date(reportStart)
+      const end = new Date(reportEnd)
+      const startTime = start.toISOString()
+      const endTime = end.toISOString()
+      const body = { startTime, endTime }
+      if (reportSpaceKey.trim()) body.spaceKey = reportSpaceKey.trim()
+      const res = await fetch(`${API_BASE}/api/reports/confluence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setReportError(data.error || `Request failed (${res.status})`)
+        return
+      }
+      setReportResult({ pageUrl: data.pageUrl, issueCount: data.issueCount })
+    } catch (e) {
+      setReportError(e.message || 'Network error')
+    } finally {
+      setReportLoading(false)
+    }
+  }, [reportStart, reportEnd, reportSpaceKey])
 
   // Group issues by shared linked issue key
   const groups = buildGroups(paginated)
@@ -363,10 +427,69 @@ function App() {
           </div>
         )}
         <ColumnToggle table={table} onReset={resetPreferences} />
+        <button
+          type="button"
+          className={`filter-btn report-btn ${reportPanelOpen ? 'active' : ''}`}
+          onClick={() => { setReportPanelOpen(!reportPanelOpen); setReportError(null); setReportResult(null); }}
+        >
+          Generate report
+        </button>
         <span className="issue-count">
           {sorted.length} of {issues.length} issues
         </span>
       </div>
+      {reportPanelOpen && (
+        <div className="report-panel">
+          <p className="report-panel-title">Confluence report: issues opened in a date range</p>
+          <div className="report-form">
+            <div className="report-field">
+              <label>Start (date & time)</label>
+              <input
+                type="datetime-local"
+                value={reportStart}
+                onChange={e => setReportStart(e.target.value)}
+              />
+            </div>
+            <div className="report-field">
+              <label>End (date & time)</label>
+              <input
+                type="datetime-local"
+                value={reportEnd}
+                onChange={e => setReportEnd(e.target.value)}
+              />
+            </div>
+            <div className="report-field">
+              <label>Confluence space key (optional; uses default from config if empty)</label>
+              <input
+                type="text"
+                placeholder="e.g. TST, DEMO"
+                value={reportSpaceKey}
+                onChange={e => setReportSpaceKey(e.target.value)}
+              />
+            </div>
+            <div className="report-actions">
+              <button type="button" className="filter-btn" onClick={() => applyReportPreset('lastWeek')}>
+                Set: last Tue 10am → this Tue 10am
+              </button>
+              <button
+                type="button"
+                className="filter-btn report-generate-btn"
+                onClick={generateReport}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Generating…' : 'Generate report'}
+              </button>
+            </div>
+          </div>
+          {reportError && <p className="report-error">{reportError}</p>}
+          {reportResult && (
+            <p className="report-success">
+              Created report with <strong>{reportResult.issueCount}</strong> issue(s).{' '}
+              <a href={reportResult.pageUrl} target="_blank" rel="noopener noreferrer">Open in Confluence</a>
+            </p>
+          )}
+        </div>
+      )}
       <div className="pagination-bar">
         <div className="page-size-selector">
           <span>Show:</span>

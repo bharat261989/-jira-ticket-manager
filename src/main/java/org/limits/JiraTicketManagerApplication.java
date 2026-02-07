@@ -3,9 +3,12 @@ package org.limits;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import org.limits.api.ReportResource;
 import org.limits.api.TaskResource;
 import org.limits.api.TicketResource;
+import org.limits.client.ConfluenceClient;
 import org.limits.client.JiraClient;
+import org.limits.config.ConfluenceConfig;
 import org.limits.config.HoconConfigLoader;
 import org.limits.config.JiraConfiguration;
 import org.limits.config.JiraConfiguration.JiraConfig;
@@ -16,6 +19,7 @@ import org.limits.task.TaskScheduler;
 import org.limits.task.impl.IssueSyncTask;
 import org.limits.task.impl.CommentWatchTask;
 import org.limits.task.impl.StaleIssueCleanupTask;
+import org.limits.task.impl.ConfluenceTestPageTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +50,7 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         HoconConfigLoader hoconLoader = new HoconConfigLoader();
         JiraConfig jiraConfig = hoconLoader.loadJiraConfig();
         TasksConfig tasksConfig = hoconLoader.loadTasksConfig();
+        ConfluenceConfig confluenceConfig = hoconLoader.loadConfluenceConfig();
 
         LOG.info("Connecting to Jira at: {} (project: {})",
                 jiraConfig.getBaseUrl(), jiraConfig.getBaseProject());
@@ -71,6 +76,15 @@ public class JiraTicketManagerApplication extends Application<JiraConfiguration>
         // Register resources
         environment.jersey().register(new TicketResource(jiraClient));
         environment.jersey().register(new TaskResource(taskScheduler));
+
+        if (confluenceConfig != null) {
+            ConfluenceClient confluenceClient = new ConfluenceClient(confluenceConfig);
+            environment.jersey().register(new ReportResource(jiraClient, confluenceClient, jiraConfig, confluenceConfig));
+            taskScheduler.registerTask(new ConfluenceTestPageTask(confluenceClient, confluenceConfig));
+            LOG.info("Confluence report API and confluence-test-page task enabled");
+        } else {
+            LOG.info("Confluence not configured; report API disabled");
+        }
 
         // Register managed lifecycle components
         environment.lifecycle().manage(taskScheduler);
